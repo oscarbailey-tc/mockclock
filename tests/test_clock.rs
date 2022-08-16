@@ -26,12 +26,13 @@ async fn test_init() {
     assert!(acc.is_none());
 
     set_clock(&payer, &mut banks_client, 100).await;
-
     assert!(get_clock(&mut banks_client).await == 100);
 
     set_clock(&payer, &mut banks_client, 28234982).await;
-
     assert!(get_clock(&mut banks_client).await == 28234982);
+
+    set_clock(&payer, &mut banks_client, -12831293).await;
+    assert!(get_clock(&mut banks_client).await == -12831293);
 }
 
 fn get_clock_address() -> Pubkey {
@@ -39,16 +40,16 @@ fn get_clock_address() -> Pubkey {
     return state
 }
 
-async fn get_clock(banks_client: &mut BanksClient) -> u64 {
+async fn get_clock(banks_client: &mut BanksClient) -> i64 {
     let acc = banks_client.get_account(get_clock_address()).await.unwrap().unwrap();
 
     let clock_bytes: [u8; 8] = acc.data.try_into().unwrap();
-    let clock_val = u64::from_le_bytes(clock_bytes);
+    let clock_val = i64::from_le_bytes(clock_bytes);
 
     return clock_val;
 }
 
-pub async fn set_clock(payer: &Keypair, banks_client: &mut BanksClient, time: u64) {
+pub async fn set_clock(payer: &Keypair, banks_client: &mut BanksClient, time: i64) {
     let mut instructions = vec![];
 
     println!("Payer: {}", payer.pubkey());

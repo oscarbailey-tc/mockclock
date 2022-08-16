@@ -22,7 +22,7 @@ pub fn process_instruction(
     assert!(*clock_acc.key == expected_addr);
 
     let new_clock_bytes: [u8; 8] = instruction_data.try_into().expect("Invalid instruction data");
-    let new_clock = u64::from_le_bytes(new_clock_bytes);
+    let new_clock = i64::from_le_bytes(new_clock_bytes);
     msg!("Setting new clock to {}...", new_clock);
 
     if clock_acc.data_len() == 0 {
