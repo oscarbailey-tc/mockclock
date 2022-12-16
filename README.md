@@ -25,23 +25,32 @@ fn get_clock(acc: &AccountInfo) -> Result<Clock, ProgramError> {
 }
 ```
 
-In solana-program-test:
+In solana-program-test, put `mock_clock.so` in tests/fixtures.
 ```rust
-pub async fn set_clock(payer: &Keypair, banks_client: &mut BanksClient, clock: &Clock) {
-    let mut instructions = vec![];
+const MOCK_CLOCK_ID = solana_sdk::pubkey!("CxkPwJHwivfsTZpMfyKCab5xu2jgVk6VDEamgJ1TjLUq");
 
-    instructions.push(Instruction{
-        program_id: id(),
+// Add the mock clock program
+// ...
+    pc.add_program("mock_clock", MOCK_CLOCK_ID, None);
+// ...
+
+
+/// Set the mock clock
+pub async fn set_clock(payer: &Keypair, banks_client: &mut BanksClient, clock: &Clock) {
+    let (clock_address, _) = Pubkey::find_program_address(&[b"clock"], &MOCK_CLOCK_ID);
+
+    let ins = Instruction{
+        program_id: MOCK_CLOCK_ID,
         data: bincode::serialize(&clock).unwrap(),
         accounts: vec![
-            AccountMeta::new(get_clock_address(), false),
+            AccountMeta::new(clock_address, false),
             AccountMeta::new(payer.pubkey(), true),
             AccountMeta::new_readonly(solana_sdk::system_program::id(), false),
         ],
-    });
+    };
 
     let tx = Transaction::new_signed_with_payer(
-        &instructions,
+        &[ins],
         Some(&payer.pubkey()),
         &[payer],
         banks_client.get_latest_blockhash().await.unwrap(),

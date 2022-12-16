@@ -61,12 +61,13 @@ async fn get_clock(banks_client: &mut BanksClient) -> Clock {
 
 pub async fn set_clock(payer: &Keypair, banks_client: &mut BanksClient, clock: &Clock) {
     let mut instructions = vec![];
+    let (clock_address, _) = Pubkey::find_program_address(&[b"clock"], &id());
 
     instructions.push(Instruction{
         program_id: id(),
         data: bincode::serialize(&clock).unwrap(),
         accounts: vec![
-            AccountMeta::new(get_clock_address(), false),
+            AccountMeta::new(clock_address, false),
             AccountMeta::new(payer.pubkey(), true),
             AccountMeta::new_readonly(solana_sdk::system_program::id(), false),
         ],
