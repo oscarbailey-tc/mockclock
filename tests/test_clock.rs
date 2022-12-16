@@ -1,10 +1,10 @@
 // Mark this test as BPF-only due to current `ProgramTest` limitations when CPIing into the system program
-#![cfg(feature = "test-bpf")]
+#![cfg(feature = "test-sbf")]
 #![cfg(test)]
 
 use std::str::FromStr;
 
-use solana_program::{pubkey::Pubkey, instruction::{Instruction, AccountMeta}};
+use solana_program::{pubkey::Pubkey, instruction::{Instruction, AccountMeta}, clock::Clock};
 use solana_sdk::{signer::Signer, transaction::Transaction, signature::Keypair};
 
 use mock_clock::processor::process_instruction;
@@ -17,6 +17,22 @@ pub fn id() -> Pubkey {
     return Pubkey::from_str(ID).unwrap();
 }
 
+pub fn get_prand(seed: &mut i64) -> i64 {
+    let new_rand = ((*seed * 1103515245) + 12345) & 0x7fffffff;
+    *seed = new_rand;
+    return new_rand;
+}
+
+pub fn get_clock_prand(seed: &mut i64) -> Clock {
+    Clock {
+        epoch: get_prand(seed) as u64,
+        epoch_start_timestamp: get_prand(seed),
+        leader_schedule_epoch: get_prand(seed) as u64,
+        slot: get_prand(seed) as u64,
+        unix_timestamp: get_prand(seed)
+    }
+}
+
 #[tokio::test]
 async fn test_init() {
     let pc = ProgramTest::new("mock_clock", id(), processor!(process_instruction));
@@ -25,14 +41,12 @@ async fn test_init() {
     let acc = banks_client.get_account(get_clock_address()).await.unwrap();
     assert!(acc.is_none());
 
-    set_clock(&payer, &mut banks_client, 100).await;
-    assert!(get_clock(&mut banks_client).await == 100);
-
-    set_clock(&payer, &mut banks_client, 28234982).await;
-    assert!(get_clock(&mut banks_client).await == 28234982);
-
-    set_clock(&payer, &mut banks_client, -12831293).await;
-    assert!(get_clock(&mut banks_client).await == -12831293);
+    let mut seed = 384234;
+    for _ in 0..10 {
+        let clock = get_clock_prand(&mut seed);
+        set_clock(&payer, &mut banks_client, &clock).await;
+        assert!(get_clock(&mut banks_client).await == clock);
+    }
 }
 
 fn get_clock_address() -> Pubkey {
@@ -40,23 +54,17 @@ fn get_clock_address() -> Pubkey {
     return state
 }
 
-async fn get_clock(banks_client: &mut BanksClient) -> i64 {
+async fn get_clock(banks_client: &mut BanksClient) -> Clock {
     let acc = banks_client.get_account(get_clock_address()).await.unwrap().unwrap();
-
-    let clock_bytes: [u8; 8] = acc.data.try_into().unwrap();
-    let clock_val = i64::from_le_bytes(clock_bytes);
-
-    return clock_val;
+    bincode::deserialize(&acc.data).unwrap()
 }
 
-pub async fn set_clock(payer: &Keypair, banks_client: &mut BanksClient, time: i64) {
+pub async fn set_clock(payer: &Keypair, banks_client: &mut BanksClient, clock: &Clock) {
     let mut instructions = vec![];
-
-    println!("Payer: {}", payer.pubkey());
 
     instructions.push(Instruction{
         program_id: id(),
-        data: time.to_le_bytes().to_vec(),
+        data: bincode::serialize(&clock).unwrap(),
         accounts: vec![
             AccountMeta::new(get_clock_address(), false),
             AccountMeta::new(payer.pubkey(), true),

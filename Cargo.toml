@@ -1,6 +1,6 @@
 [package]
 name = "mock_clock"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -9,14 +9,15 @@ edition = "2021"
 # To use this lib as a dependency for another solana program,
 # enable the "no-entrypoint" feature
 no-entrypoint = []
-test-bpf = []
+test-sbf = []
 
 [dependencies]
-solana-program = "=1.9.29"
+bincode = "*"
+solana-program = "=1.14.10"
 
 [dev-dependencies]
-solana-program-test = "1.9.29"
-solana-sdk = "1.9.29"
+solana-program-test = "*"
+solana-sdk = "*"
 
 [lib]
 crate-type = ["cdylib", "lib"]
